@@ -1,0 +1,441 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  PRODUCT_SELECTED
+  DEPOSIT_REQUESTED
+  DEPOSIT_RECEIVED
+  APPOINTMENT_CREATED
+  APPOINTMENT_COMPLETED
+  BOOKING_CREATED
+  DEPOSIT_EXPIRED
+  CANCELLED
+  LOST
+  QUOTED
+  NEGOTIATING
+  REJECTED
+  WON
+}
+
+enum ProductHoldStatus {
+  NONE
+  PENDING_DEPOSIT
+  RESERVED
+  RELEASED
+  CONVERTED_TO_BOOKING
+}
+
+enum LeadItemStatus {
+  REQUESTED
+  RESERVED
+  UNAVAILABLE
+  REMOVED
+}
+
+enum LeadAppointmentIntent {
+  FITTING
+  PICKUP
+  DELIVERY
+}
+
+enum LeadDepositStatus {
+  NONE
+  REQUESTED
+  RECEIVED
+  EXPIRED
+}
+
+enum LeadDepositType {
+  PERCENT
+  CUSTOM_AMOUNT
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  MANAGER
+  SALES
+  OPERATOR
+  CASHIER
+}
+
+enum ProductStatus {
+  AVAILABLE
+  RESERVED
+  RENTED
+  MAINTENANCE
+  DAMAGED
+  RETIRED
+}
+
+enum BookingStatus {
+  PENDING
+  DRAFT
+  DEPOSIT_REQUESTED
+  DEPOSIT_RECEIVED
+  CONFIRMED
+  AWAITING_REMAINING_PAYMENT
+  AWAITING_SECURITY_DEPOSIT
+  READY_FOR_PICKUP
+  SCHEDULED_PICKUP
+  PICKED_UP
+  RETURN_PENDING
+  RETURNED
+  SETTLEMENT_PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingItemPickupStatus {
+  PENDING
+  PICKED_UP
+}
+
+enum BookingItemReturnStatus {
+  PENDING
+  RETURNED
+  DAMAGED
+  MAINTENANCE
+  MISSING
+  DISPUTE
+}
+
+enum ReturnItemCondition {
+  GOOD
+  DIRTY
+  DAMAGED
+  MISSING_ACCESSORY
+  MISSING_ITEM
+}
+
+enum PreviewRequestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+enum VoucherDiscountType {
+  PERCENT
+  FIXED
+}
+
+model Customer {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  phone            String
+  name             String
+  loyaltyPoints    Int       @default(0)
+  vipTier          String    @default("REGULAR")
+  lifetimeSpend    Float     @default(0)
+  completedRentals Int       @default(0)
+  lastRentalAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  archivedAt       DateTime?
+
+  @@index([phone])
+  @@map("customers")
+}
+
+model User {
+  id         String    @id @default(cuid())
+  email      String    @unique
+  role       UserRole
+  isActive   Boolean   @default(true)
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@map("users")
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  code         String?       @unique
+  name         String
+  description  String?
+  category     String
+  categoryId   String?
+  categoryPath String?
+  brand        String?
+  price        Float
+  productValue Float         @default(0)
+  rentalPrice  Float         @default(0)
+  image        String?
+  qrCode       String?       @unique
+  status       ProductStatus @default(AVAILABLE)
+  isActive     Boolean       @default(true)
+  archivedAt   DateTime?
+  totalItems   Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([category])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ProductCategory {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  parentId    String?
+  type        String    @default("general")
+  description String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  active      Boolean   @default(true)
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([parentId])
+  @@index([type])
+  @@index([isActive, sortOrder])
+  @@map("product_categories")
+}
+
+model ProductVariant {
+  id         String    @id @default(cuid())
+  productId  String
+  name       String
+  sku        String    @unique
+  size       String?
+  color      String?
+  material   String?
+  imageUrls  String?
+  isActive   Boolean   @default(true)
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model InventoryItem {
+  id         String    @id @default(cuid())
+  productId  String
+  archivedAt DateTime?
+
+  @@index([productId])
+  @@map("inventory_items")
+}
+
+model Lead {
+  id                    String                 @id @default(cuid())
+  customerId            String
+  status                LeadStatus             @default(NEW)
+  productHoldStatus     ProductHoldStatus      @default(NONE)
+  depositStatus         LeadDepositStatus      @default(NONE)
+  source                String?
+  notes                 String?
+  quotedPrice           Float?
+  voucherCode           String?
+  voucherDiscount       Float                  @default(0)
+  depositAmountRequired Float                  @default(0)
+  depositAmountPaid     Float                  @default(0)
+  selectedDepositType   LeadDepositType        @default(PERCENT)
+  selectedDepositRate   Int                    @default(50)
+  customDepositAmount   Float?
+  rentalDates           String?
+  productId             String?
+  pickupDate            DateTime?
+  returnDate            DateTime?
+  appointmentIntent     LeadAppointmentIntent?
+  contactDeadlineAt     DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  archivedAt            DateTime?
+
+  @@index([customerId])
+  @@index([status, productHoldStatus])
+  @@index([productId])
+  @@map("leads")
+}
+
+model LeadItem {
+  id                 String         @id @default(cuid())
+  leadId             String
+  productId          String
+  inventoryItemId    String?
+  productNameAtTime  String?
+  productValueAtTime Float          @default(0)
+  rentalPriceAtTime  Float          @default(0)
+  status             LeadItemStatus @default(REQUESTED)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([leadId])
+  @@index([productId])
+  @@index([inventoryItemId])
+  @@map("lead_items")
+}
+
+model Booking {
+  id                          String          @id @default(cuid())
+  customerId                  String
+  leadId                      String?
+  status                      BookingStatus   @default(DRAFT)
+  startDate                   DateTime
+  endDate                     DateTime
+  rentalDays                  Int
+  pickupDate                  DateTime?
+  returnDate                  DateTime?
+  durationDays                Int             @default(3)
+  basePrice                   Float           @default(0)
+  priceAdjustment             Float           @default(0)
+  totalPrice                  Float
+  subtotalPrice               Float           @default(0)
+  voucherCode                 String?
+  voucherDiscount             Float           @default(0)
+  voucherId                   String?
+  pointsRedeemed              Int             @default(0)
+  pointsDiscount              Float           @default(0)
+  vipTierAtTime               String?
+  vipDiscount                 Float           @default(0)
+  productValue                Float           @default(0)
+  productValueTotal           Float           @default(0)
+  selectedDepositRate         Int             @default(50)
+  selectedDepositType         LeadDepositType @default(PERCENT)
+  customDepositAmount         Float?
+  depositPolicySnapshot       Json?
+  rentalPaymentPolicySnapshot Json?
+  bookingDepositRequired      Float           @default(0)
+  bookingDepositPaid          Float           @default(0)
+  depositRequired             Float           @default(0)
+  depositPaid                 Float           @default(0)
+  rentalPaid                  Float           @default(0)
+  securityDepositRequired     Float           @default(0)
+  securityDepositHeld         Float           @default(0)
+  securityDepositOption       String?
+  accessories                 String?
+  lockedAt                    DateTime?
+  failureReason               String?
+  appointmentId               String?
+  bookingDepositPaymentId     String?
+  replacementDiscountPercent  Float?
+  notes                       String?
+  createdById                 String
+  archivedAt                  DateTime?
+  createdAt                   DateTime        @default(now())
+  updatedAt                   DateTime        @updatedAt
+
+  @@index([customerId])
+  @@index([createdById])
+  @@index([startDate, endDate])
+  @@index([voucherId])
+  @@map("bookings")
+}
+
+model BookingItem {
+  id                 String                  @id @default(cuid())
+  bookingId          String
+  productId          String
+  productNameAtTime  String?
+  variantId          String?
+  inventoryItemId    String?
+  quantity           Int                     @default(1)
+  pricePerDay        Float
+  productValueAtTime Float                   @default(0)
+  rentalPriceAtTime  Float                   @default(0)
+  handoverImages     String?
+  returnImages       String?
+  fees               Json?
+  pickupStatus       BookingItemPickupStatus @default(PENDING)
+  returnStatus       BookingItemReturnStatus @default(PENDING)
+  condition          ReturnItemCondition?
+
+  @@index([bookingId])
+  @@index([productId])
+  @@index([inventoryItemId])
+  @@index([variantId])
+  @@map("booking_items")
+}
+
+model CalendarBlock {
+  id              String   @id @default(cuid())
+  inventoryItemId String
+  reason          String
+  startDate       DateTime
+  endDate         DateTime
+
+  @@index([inventoryItemId, startDate, endDate])
+  @@map("calendar_blocks")
+}
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+model PreviewRequest {
+  id             String               @id @default(cuid())
+  customerId     String?
+  garmentName    String
+  sourceImageUrl String?
+  resultImageUrl String?
+  status         PreviewRequestStatus @default(PENDING)
+  notes          String?
+  resultNotes    String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  archivedAt     DateTime?
+
+  @@index([customerId])
+  @@index([status])
+  @@map("preview_requests")
+}
+
+model Voucher {
+  id                String              @id @default(cuid())
+  code              String              @unique
+  name              String
+  discountType      VoucherDiscountType
+  discountValue     Float
+  minOrderValue     Float               @default(0)
+  maxDiscountAmount Float?
+  usageLimit        Int?
+  usedCount         Int                 @default(0)
+  startsAt          DateTime?
+  endsAt            DateTime?
+  isActive          Boolean             @default(true)
+  archivedAt        DateTime?
+  categoryId        String?
+
+  @@index([isActive, startsAt, endsAt])
+  @@map("vouchers")
+}
+
+model VoucherProduct {
+  voucherId String
+  productId String
+
+  @@id([voucherId, productId])
+  @@map("voucher_products")
+}
+
+model VoucherUsage {
+  id             String   @id @default(cuid())
+  voucherId      String
+  bookingId      String   @unique
+  customerId     String
+  discountAmount Float
+  createdAt      DateTime @default(now())
+
+  @@index([voucherId])
+  @@index([customerId])
+  @@map("voucher_usages")
+}
