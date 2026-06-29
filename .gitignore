@@ -15,6 +15,7 @@ pnpm-lock.yaml
 dist/
 build/
 .next/
+.next-dev/
 out/
 
 # IDE

@@ -264,7 +264,7 @@ export const productService = {
           path: parentPath ? `${parentPath} / ${category.name}` : category.name,
           children,
         };
-      }).filter((category) => category.totalProductCount > 0);
+      });
 
     return buildTree(null);
   },

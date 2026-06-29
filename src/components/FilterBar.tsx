@@ -1,13 +1,15 @@
 'use client';
 
 import { useI18n } from '@/components/client/I18nProvider';
-import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
+import { CategoryTreeFilter } from '@/components/CategoryTreeFilter';
+import { SearchableSelect } from '@/components/SearchableSelect';
+import type { PublicCategory } from '@/types';
 
 type FilterBarProps = {
   query: string;
   category: string;
   status: string;
-  categories: SearchableSelectOption[];
+  categories: PublicCategory[];
   onQueryChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onStatusChange: (value: string) => void;
@@ -34,15 +36,13 @@ export function FilterBar({
           placeholder={dictionary.products.searchPlaceholder}
         />
       </label>
-      <SearchableSelect
+      <CategoryTreeFilter
         label={dictionary.products.category}
-        value={category}
-        onChange={onCategoryChange}
-        searchPlaceholder={`${dictionary.products.search}...`}
-        options={[
-          { value: 'all', label: dictionary.products.allCategories },
-          ...categories,
-        ]}
+        selectedSlug={category}
+        onSelect={onCategoryChange}
+        categories={categories}
+        allLabel={dictionary.products.allCategories}
+        allCount={categories.reduce((total, item) => total + item.totalProductCount, 0)}
       />
       <SearchableSelect
         label={dictionary.products.status}

@@ -18,7 +18,9 @@ export function getProductImage(product?: Pick<PublicProduct, 'id' | 'image' | '
 }
 
 export function getProductGallery(product?: PublicProduct | null) {
-  return [...new Set([...(product?.images ?? []), product?.image].filter(
+  const images = [...new Set([...(product?.images ?? []), product?.image].filter(
     (image): image is string => Boolean(image?.trim()),
   ))];
+
+  return images.length > 0 ? images : [getProductImage(product)];
 }

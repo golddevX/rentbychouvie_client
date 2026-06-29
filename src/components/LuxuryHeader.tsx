@@ -8,24 +8,10 @@ import { useClientSettings } from '@/components/client/ClientSettingsProvider';
 import { useI18n } from '@/components/client/I18nProvider';
 import { useCartStore } from '@/store/cart.store';
 import { categoriesApi } from '@/lib/api';
-import { SearchableSelect, SearchableSelectOption } from '@/components/SearchableSelect';
+import { CategoryTreeFilter } from '@/components/CategoryTreeFilter';
 import type { PublicCategory } from '@/types';
 
 const HIDDEN_HREFS = new Set(['/ai-preview']);
-
-function categoryOptions(categories: PublicCategory[], depth = 0): SearchableSelectOption[] {
-  return categories.flatMap((category) => [
-    {
-      value: category.slug,
-      label: category.name,
-      description: `${category.totalProductCount} mẫu`,
-      keywords: category.path,
-      depth,
-      isGroup: depth === 0,
-    },
-    ...categoryOptions(category.children, depth + 1),
-  ]);
-}
 
 export function LuxuryHeader() {
   const { dictionary } = useI18n();
@@ -36,19 +22,13 @@ export function LuxuryHeader() {
     (item) => item.visible && !HIDDEN_HREFS.has(item.href),
   );
 
-  const [categories, setCategories] = useState<SearchableSelectOption[]>([]);
+  const [categories, setCategories] = useState<PublicCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
 
   useEffect(() => {
     categoriesApi
       .getAll()
-      .then((res) => {
-        const opts: SearchableSelectOption[] = [
-          { value: 'all', label: 'Tất cả danh mục' },
-          ...categoryOptions(res.data),
-        ];
-        setCategories(opts);
-      })
+      .then((res) => setCategories(res.data))
       .catch(() => {});
   }, []);
 
@@ -84,14 +64,14 @@ export function LuxuryHeader() {
           ))}
 
           {categories.length > 0 && (
-            <SearchableSelect
-              value={selectedCategory}
-              options={categories}
-              onChange={handleCategoryChange}
+            <CategoryTreeFilter
+              selectedSlug={selectedCategory}
+              categories={categories}
+              onSelect={handleCategoryChange}
+              allLabel="Tất cả danh mục"
+              allCount={categories.reduce((total, item) => total + item.totalProductCount, 0)}
               placeholder="Danh mục"
-              searchPlaceholder="Tìm danh mục..."
-              emptyText="Không tìm thấy danh mục"
-              className="header-category-select"
+              compact
             />
           )}
         </div>

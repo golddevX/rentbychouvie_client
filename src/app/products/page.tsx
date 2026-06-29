@@ -5,31 +5,11 @@ import { useSearchParams } from 'next/navigation';
 import { categoriesApi, productsApi } from '@/lib/api';
 import { ProductCard } from '@/components/ProductCard';
 import { FilterBar } from '@/components/FilterBar';
-import { CategoryTreeFilter } from '@/components/CategoryTreeFilter';
 import { useI18n } from '@/components/client/I18nProvider';
 import type { PublicCategory, PublicProduct } from '@/types';
 
 function flattenCategories(categories: PublicCategory[]): PublicCategory[] {
   return categories.flatMap((category) => [category, ...flattenCategories(category.children)]);
-}
-
-function categoryOptions(categories: PublicCategory[], depth = 0): Array<{
-  value: string;
-  label: string;
-  description: string;
-  depth: number;
-  isGroup: boolean;
-}> {
-  return categories.flatMap((category) => [
-    {
-      value: category.slug,
-      label: category.name,
-      description: `${category.totalProductCount} mẫu`,
-      depth,
-      isGroup: depth === 0,
-    },
-    ...categoryOptions(category.children, depth + 1),
-  ]);
 }
 
 function categoryAndDescendantIds(category: PublicCategory | undefined) {
@@ -74,7 +54,6 @@ function ProductsContent() {
   }, [dictionary.products.loadError]);
 
   const categories = useMemo(() => flattenCategories(categoryTree), [categoryTree]);
-  const filterCategoryOptions = useMemo(() => categoryOptions(categoryTree), [categoryTree]);
   const selectedCategory = useMemo(
     () => categories.find((item) =>
       item.slug === category
@@ -105,7 +84,7 @@ function ProductsContent() {
       const matchesStatus = status === 'all' || product.status === status;
       return matchesQuery && matchesCategory && matchesStatus;
     });
-  }, [category, products, query, selectedCategoryIds, status]);
+  }, [category, products, query, selectedCategory, selectedCategoryIds, status]);
 
   const groupedProducts = useMemo(
     () => categories
@@ -143,23 +122,13 @@ function ProductsContent() {
 
         <FilterBar
           query={query}
-          category={category}
+          category={selectedCategory?.slug ?? category}
           status={status}
-          categories={filterCategoryOptions}
+          categories={categoryTree}
           onQueryChange={setQuery}
           onCategoryChange={setCategory}
           onStatusChange={setStatus}
         />
-
-        {categoryTree.length > 0 && (
-          <CategoryTreeFilter
-            categories={categoryTree}
-            selectedSlug={selectedCategory?.slug ?? category}
-            allLabel={dictionary.products.allCategories}
-            allCount={products.length}
-            onSelect={setCategory}
-          />
-        )}
 
         {loading && <div className="soft-panel p-8">{dictionary.common.loading}</div>}
 

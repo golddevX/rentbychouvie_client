@@ -41,6 +41,8 @@ function ProductImageMarquee({
   productName: string;
   onSelect: (index: number) => void;
 }) {
+  if (images.length === 0) return null;
+
   if (images.length === 1) {
     return (
       <button
